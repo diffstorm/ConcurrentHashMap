@@ -46,8 +46,17 @@ public:
         std::size_t hashValue = hashFunction(key);
         std::size_t index = hashValue % buckets.size();
 
+        Node* current = buckets[index].empty() ? nullptr : buckets[index][0]; // Cast to Node*
+        while (current != nullptr) {
+            if (current->key == key) {
+               current->value = value; // Update the value
+               return; // Found the key
+            }
+            current = current->next; // No need to cast here
+        }
+        
         Node* newNode = new Node(key, value);
-        newNode->next = buckets[index].empty() ? nullptr : buckets[index][0];  // Cast to Node*
+        newNode->next = buckets[index].empty() ? nullptr : buckets[index][0]; // Cast to Node*
         buckets[index] = {newNode};
     }
 
