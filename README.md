@@ -5,6 +5,7 @@
 [![C++ Standard](https://img.shields.io/badge/C%2B%2B-17-blue.svg)](https://en.cppreference.com/w/cpp/17)
 [![Code Coverage](https://codecov.io/gh/diffstorm/ConcurrentHashMap/branch/main/graph/badge.svg)](https://codecov.io/gh/diffstorm/ConcurrentHashMap)
 ![GitHub Stars](https://img.shields.io/github/stars/diffstorm/ConcurrentHashMap?style=social)
+![Platforms](https://img.shields.io/badge/Platform-Linux%20%7C%20Windows%20%7C%20macOS-lightgrey)
 
 A thread-safe hash map implementation in C++ with support for concurrent read and write operations.
 
@@ -77,10 +78,14 @@ cmake --build . --parallel
 ## Running tests
 
 ### After CMake build
-cd build && ctest --verbose
+`cd build && ctest --verbose`
 
 ### Or directly
-./ConcurrentHashMapTest --gtest_color=yes
+`./ConcurrentHashMapTest --gtest_color=yes`
+
+
+## :snowman: Author
+Eray Öztürk ([@diffstorm](https://github.com/diffstorm))
 
 
 ## License
