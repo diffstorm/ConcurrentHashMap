@@ -16,85 +16,95 @@
 #include <shared_mutex>
 #include <functional>
 #include <list>
+#include <optional>
+#include <algorithm> // For std::max
 
 template <typename Key, typename Value, typename Hash = std::hash<Key>>
-class ConcurrentHashMap {
+class ConcurrentHashMap
+{
 private:
     // Define the structure of each node in the hash map
-    struct Node {
+    struct Node
+    {
         Key key;
         Value value;
     };
 
     // Define the hash map buckets and associated mutexes
     std::vector<std::list<Node>> buckets;
-    std::vector<std::shared_mutex> mutexes;
+    mutable std::vector<std::shared_mutex> mutexes;
     Hash hashFunction;
 
-    // Get the mutex for a given key
-    std::shared_mutex& getMutex(const Key& key) {
+    // Get mutex for a key
+    std::shared_mutex &getMutex(const Key &key) const
+    {
         std::size_t hashValue = hashFunction(key);
         return mutexes[hashValue % mutexes.size()];
     }
 
 public:
-    explicit ConcurrentHashMap(std::size_t num_buckets = 16) : buckets(num_buckets), mutexes(num_buckets) {}
+    explicit ConcurrentHashMap(std::size_t num_buckets = 16)
+        : buckets(std::max<std::size_t>(1, num_buckets)),
+          mutexes(std::max<std::size_t>(1, num_buckets)) {}
 
     // Insert a key-value pair into the hash map
-    void insert(const Key& key, const Value& value) {
+    void insert(const Key &key, const Value &value)
+    {
         std::unique_lock lock(getMutex(key));
-        std::size_t hashValue = hashFunction(key);
-        std::size_t index = hashValue % buckets.size();
+        std::size_t index = hashFunction(key) % buckets.size();
+        auto &bucket = buckets[index];
+        auto it = std::find_if(bucket.begin(), bucket.end(),
+                               [&](const Node & node)
+        {
+            return node.key == key;
+        });
 
-        auto& bucket = buckets[index];
-        auto it = std::find_if(bucket.begin(), bucket.end(), [&](const Node& node) { return node.key == key; });
-
-        if (it != bucket.end()) {
-            // Update existing key
+        if(it != bucket.end())
+        {
             it->value = value;
-        } else {
-            // Insert new key-value pair
-            bucket.push_back({key, value});
         }
+        else bucket.push_back({key, value});
     }
 
     // Retrieve the value associated with a key from the hash map
-    bool get(const Key& key, Value& value) {
+    std::optional<Value> get(const Key &key) const
+    {
         std::shared_lock lock(getMutex(key));
-        std::size_t hashValue = hashFunction(key);
-        std::size_t index = hashValue % buckets.size();
-
-        const auto& bucket = buckets[index];
-        auto it = std::find_if(bucket.begin(), bucket.end(), [&](const Node& node) { return node.key == key; });
-
-        if (it != bucket.end()) {
-            value = it->value;
-            return true; // Found the key
-        }
-
-        return false; // Key not found
+        std::size_t index = hashFunction(key) % buckets.size();
+        const auto &bucket = buckets[index];
+        auto it = std::find_if(bucket.begin(), bucket.end(),
+                               [&](const Node & node)
+        {
+            return node.key == key;
+        });
+        return (it != bucket.end()) ? std::optional<Value>(it->value) : std::nullopt;
     }
 
     // Remove a key-value pair from the hash map
-    void remove(const Key& key) {
+    void remove(const Key &key)
+    {
         std::unique_lock lock(getMutex(key));
-        std::size_t hashValue = hashFunction(key);
-        std::size_t index = hashValue % buckets.size();
-
-        auto& bucket = buckets[index];
-        bucket.remove_if([&](const Node& node) { return node.key == key; });
+        std::size_t index = hashFunction(key) % buckets.size();
+        buckets[index].remove_if([&](const Node & node)
+        {
+            return node.key == key;
+        });
     }
 
-    // Print the contents of the hash map
-    void print() {
-        for (std::size_t i = 0; i < buckets.size(); ++i) {
+    // Print to any ostream
+    void print(std::ostream &os = std::cout) const
+    {
+        for(std::size_t i = 0; i < buckets.size(); ++i)
+        {
             std::shared_lock lock(mutexes[i]);
-            std::cout << "Bucket " << i << ": ";
-            const auto& bucket = buckets[i];
-            for (const auto& node : bucket) {
-                std::cout << "(" << node.key << ", " << node.value << ") ";
+            os << "Bucket " << i << ": ";
+
+            for(const auto &node : buckets[i])
+            {
+                os << "(" << node.key << ", " << node.value << ") ";
             }
-            std::cout << std::endl;
+
+            os << "\n";
         }
     }
 
