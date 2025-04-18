@@ -18,44 +18,30 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y build-essential cmake lcov
         sudo apt-get install -y libgtest-dev googletest
-        sudo apt-get install -y gcovr  # Alternative coverage tool
-
-    - name: Clean workspace
-      run: |
-        rm -rf build
-        find . -name "*.gcda" -delete
 
     - name: Configure CMake
       run: |
         cmake -B build -DCMAKE_BUILD_TYPE=Debug \
-          -DCMAKE_CXX_FLAGS="-fprofile-arcs -ftest-coverage -fprofile-update=atomic -O0" \
-          -DCMAKE_EXE_LINKER_FLAGS="-lgcov --coverage"
+          -DCMAKE_CXX_FLAGS="-fprofile-arcs -ftest-coverage -fprofile-update=atomic -O0"
 
     - name: Build
-      run: |
-        cmake --build build --clean-first
+      run: cmake --build build --clean-first
 
     - name: Run Tests
       working-directory: ./build
       run: ./ConcurrentHashMapTest
 
-    - name: Generate Coverage (lcov)
+    - name: Generate Coverage Report
       run: |
         lcov --capture --directory ./build --output-file coverage.info \
              --rc geninfo_unexecuted_blocks=1 \
              --ignore-errors mismatch,negative
-        lcov --remove coverage.info '/usr/*' '*/test/*' --output-file coverage.info
-        lcov --list coverage.info
-
-    - name: Generate Coverage (gcovr alternative)
-      run: |
-        gcovr -r ${{ github.workspace }} --exclude-unreachable-branches \
-             --exclude-throw-branches --html-details coverage.html
+        lcov --remove coverage.info '/usr/*' --output-file coverage.info
+        lcov --list coverage.info || true  # Prevent failure on warnings
 
     - name: Upload to Codecov
       uses: codecov/codecov-action@v5
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
-        files: coverage.info,coverage.xml
-        flags: cpp
+        file: coverage.info
         fail_ci_if_error: false
