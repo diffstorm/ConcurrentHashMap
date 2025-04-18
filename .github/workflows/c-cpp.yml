@@ -16,16 +16,16 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential cmake 
-        sudo apt-get install -y libgtest-dev googletest lcov
+        sudo apt-get install -y build-essential cmake lcov
+        sudo apt-get install -y libgtest-dev googletest
 
-    - name: Configure CMake with Coverage
+    - name: Configure CMake
       run: |
         cmake -B build -DCMAKE_BUILD_TYPE=Debug \
           -DCMAKE_CXX_FLAGS="-fprofile-arcs -ftest-coverage"
 
     - name: Build
-      run: cmake --build build
+      run: cmake --build build --clean-first
 
     - name: Run Tests
       working-directory: ./build
@@ -33,7 +33,9 @@ jobs:
 
     - name: Generate Coverage Report
       run: |
-        lcov --capture --directory ./build --output-file coverage.info
+        lcov --capture --directory ./build --output-file coverage.info \
+             --rc geninfo_unexecuted_blocks=1 \
+             --ignore-errors mismatch
         lcov --remove coverage.info '/usr/*' '*/test/*' --output-file coverage.info
         lcov --list coverage.info
 
@@ -42,5 +44,3 @@ jobs:
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         file: coverage.info
-        flags: cpp
-        name: Codecov-CPP
